@@ -4,19 +4,10 @@ use bevy::{
     sprite::{Sprite, SpriteBundle},
 };
 
-use crate::config;
-
-#[derive(Clone, Copy)]
-pub enum Colors {
-    Orange,
-    Blue,
-    Purple,
-    Pink,
-    Yellow,
-    Red,
-    Green,
-    Brown,
-}
+use crate::{
+    colors::{self, Colors},
+    config,
+};
 
 pub struct BoardPlugin;
 
@@ -134,14 +125,14 @@ fn create_board(mut commands: Commands, board: Res<Board>) {
     for x in 0..8 {
         for y in 0..8 {
             let color = match board.tiles()[x][y] {
-                Colors::Orange => config::ORANGE,
-                Colors::Blue => config::BLUE,
-                Colors::Purple => config::PURPLE,
-                Colors::Pink => config::PINK,
-                Colors::Yellow => config::YELLOW,
-                Colors::Red => config::RED,
-                Colors::Green => config::GREEN,
-                Colors::Brown => config::BROWN,
+                Colors::Orange => colors::ORANGE,
+                Colors::Blue => colors::BLUE,
+                Colors::Purple => colors::PURPLE,
+                Colors::Pink => colors::PINK,
+                Colors::Yellow => colors::YELLOW,
+                Colors::Red => colors::RED,
+                Colors::Green => colors::GREEN,
+                Colors::Brown => colors::BROWN,
             };
             let translation = Vec3::new(
                 start + (x as f32) * tile_size,
