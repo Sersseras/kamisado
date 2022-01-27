@@ -1,14 +1,5 @@
 use bevy::prelude::Color;
 
-pub const ORANGE: Color = Color::rgb(0.839, 0.458, 0.129);
-pub const BLUE: Color = Color::rgb(0.0, 0.415, 0.670);
-pub const PURPLE: Color = Color::rgb(0.431, 0.215, 0.529);
-pub const PINK: Color = Color::rgb(0.823, 0.439, 0.619);
-pub const YELLOW: Color = Color::rgb(0.890, 0.764, 0.003);
-pub const RED: Color = Color::rgb(0.819, 0.2, 0.223);
-pub const GREEN: Color = Color::rgb(0.0, 0.564, 0.337);
-pub const BROWN: Color = Color::rgb(0.337, 0.149, 0.0);
-
 #[derive(Clone, Copy)]
 pub enum Colors {
     Orange,
@@ -19,4 +10,19 @@ pub enum Colors {
     Red,
     Green,
     Brown,
+}
+
+impl Colors {
+    pub fn color(&self) -> Color {
+        match *self {
+            Colors::Orange => Color::rgb(0.839, 0.458, 0.129),
+            Colors::Blue => Color::rgb(0.0, 0.415, 0.670),
+            Colors::Purple => Color::rgb(0.431, 0.215, 0.529),
+            Colors::Pink => Color::rgb(0.823, 0.439, 0.619),
+            Colors::Yellow => Color::rgb(0.890, 0.764, 0.003),
+            Colors::Red => Color::rgb(0.819, 0.2, 0.223),
+            Colors::Green => Color::rgb(0.0, 0.564, 0.337),
+            Colors::Brown => Color::rgb(0.337, 0.149, 0.0),
+        }
+    }
 }

@@ -4,19 +4,16 @@ use bevy::{
     sprite::{Sprite, SpriteBundle},
 };
 
-use crate::{
-    colors::{self, Colors},
-    config,
-};
+use crate::{colors::Colors, config};
 
 #[derive(Component)]
-pub struct WhitePiece {
+pub struct Piece {
     color: Colors,
     x: usize,
     y: usize,
 }
 
-impl WhitePiece {
+impl Piece {
     fn new(color: Colors, x: usize, y: usize) -> Self {
         Self { color, x, y }
     }
@@ -40,34 +37,10 @@ impl WhitePiece {
 }
 
 #[derive(Component)]
-pub struct BlackPiece {
-    color: Colors,
-    x: usize,
-    y: usize,
-}
+pub struct WhitePiece;
 
-impl BlackPiece {
-    fn new(color: Colors, x: usize, y: usize) -> Self {
-        Self { color, x, y }
-    }
-
-    pub fn color(&self) -> Colors {
-        self.color
-    }
-
-    pub fn x(&self) -> usize {
-        self.x
-    }
-
-    pub fn y(&self) -> usize {
-        self.y
-    }
-
-    pub fn move_piece(&mut self, x: usize, y: usize) {
-        self.x = x;
-        self.y = y;
-    }
-}
+#[derive(Component)]
+pub struct BlackPiece;
 
 #[derive(Bundle)]
 pub struct PieceBundle {
@@ -79,15 +52,15 @@ pub fn create_pieces(mut commands: Commands) {
     let tile_size = config::BOARD_SIZE / 8.0;
     let piece_size = tile_size / 1.5;
 
-    for (i, &(colors, color)) in [
-        (Colors::Orange, colors::ORANGE),
-        (Colors::Blue, colors::BLUE),
-        (Colors::Purple, colors::PURPLE),
-        (Colors::Pink, colors::PINK),
-        (Colors::Yellow, colors::YELLOW),
-        (Colors::Red, colors::RED),
-        (Colors::Green, colors::GREEN),
-        (Colors::Brown, colors::BROWN),
+    for (i, &color) in [
+        Colors::Orange,
+        Colors::Blue,
+        Colors::Purple,
+        Colors::Pink,
+        Colors::Yellow,
+        Colors::Red,
+        Colors::Green,
+        Colors::Brown,
     ]
     .iter()
     .enumerate()
@@ -116,7 +89,7 @@ pub fn create_pieces(mut commands: Commands) {
                 });
                 parent.spawn_bundle(SpriteBundle {
                     sprite: Sprite {
-                        color,
+                        color: color.color(),
                         ..Default::default()
                     },
                     transform: Transform {
@@ -127,7 +100,8 @@ pub fn create_pieces(mut commands: Commands) {
                     ..Default::default()
                 });
             })
-            .insert(WhitePiece::new(colors, i, 0));
+            .insert(Piece::new(color, i, 0))
+            .insert(WhitePiece);
 
         //Black
         commands
@@ -153,7 +127,7 @@ pub fn create_pieces(mut commands: Commands) {
                 });
                 parent.spawn_bundle(SpriteBundle {
                     sprite: Sprite {
-                        color,
+                        color: color.color(),
                         ..Default::default()
                     },
                     transform: Transform {
@@ -164,6 +138,7 @@ pub fn create_pieces(mut commands: Commands) {
                     ..Default::default()
                 });
             })
-            .insert(BlackPiece::new(colors, i, 7));
+            .insert(Piece::new(color, i, 7))
+            .insert(BlackPiece);
     }
 }
