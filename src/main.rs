@@ -51,6 +51,8 @@ fn mouse_button_input(
                 let piece = &mut whites[0];
 
                 piece.move_piece(0, 1);
+
+                *state.into_inner() = State::Black(board.tiles()[0][1])
             }
             State::White(_) => todo!(),
             State::Black(_) => todo!(),
