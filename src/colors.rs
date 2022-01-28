@@ -1,6 +1,6 @@
 use bevy::prelude::Color;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Colors {
     Orange,
     Blue,
