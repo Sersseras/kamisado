@@ -1,11 +1,13 @@
 use bevy::{
     input::Input,
     prelude::{
-        App, Commands, MouseButton, OrthographicCameraBundle, Query, Res, Transform, With, Without,
+        App, Commands, MouseButton, OrthographicCameraBundle, Query, Res, ResMut, Transform, With,
+        Without,
     },
     DefaultPlugins,
 };
-use board::create_board;
+use board::{create_board, Board};
+use colors::Colors;
 use pieces::{create_pieces, BlackPiece, Piece, WhitePiece};
 
 mod board;
@@ -13,6 +15,11 @@ mod colors;
 mod config;
 mod pieces;
 
+enum State {
+    Start,
+    White(Colors),
+    Black(Colors),
+}
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -21,6 +28,7 @@ fn main() {
         .add_startup_system(create_pieces)
         .add_system(mouse_button_input)
         .add_system(move_pieces)
+        .insert_resource(State::Start)
         .run();
 }
 
@@ -32,18 +40,20 @@ fn mouse_button_input(
     buttons: Res<Input<MouseButton>>,
     mut whites: Query<&mut Piece, (With<WhitePiece>, Without<BlackPiece>)>,
     mut blacks: Query<&mut Piece, (With<BlackPiece>, Without<WhitePiece>)>,
+    mut state: ResMut<State>,
+    board: Res<Board>,
 ) {
     if buttons.just_pressed(MouseButton::Left) {
-        for mut white in whites.iter_mut() {
-            let x = white.x();
-            let y = white.y() + 1;
-            white.move_piece(x, y);
-        }
+        let mut whites: Vec<_> = whites.iter_mut().collect();
 
-        for mut black in blacks.iter_mut() {
-            let x = black.x();
-            let y = black.y() - 1;
-            black.move_piece(x, y);
+        match state.into_inner() {
+            State::Start => {
+                let piece = &mut whites[0];
+
+                piece.move_piece(0, 1);
+            }
+            State::White(_) => todo!(),
+            State::Black(_) => todo!(),
         }
     }
 }
