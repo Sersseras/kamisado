@@ -138,7 +138,7 @@ pub fn create_pieces(mut commands: Commands) {
                     ..Default::default()
                 });
             })
-            .insert(Piece::new(color, i, 7))
+            .insert(Piece::new(color, 8 - i, 7))
             .insert(BlackPiece);
     }
 }
