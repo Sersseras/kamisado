@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 use std::ops::{Deref, DerefMut};
 
 use bevy::{
@@ -26,48 +27,47 @@ enum State {
     Black(Colors),
 }
 
-struct PossibleMoves {
-    possible_moves: Vec<(usize, usize)>,
+struct PossibleWhiteMoves {
+    inner: Vec<(usize, usize)>,
 }
 
-impl Deref for PossibleMoves {
+impl Deref for PossibleWhiteMoves {
     type Target = Vec<(usize, usize)>;
 
     fn deref(&self) -> &Self::Target {
-        &self.possible_moves
+        &self.inner
     }
 }
 
-impl DerefMut for PossibleMoves {
+impl DerefMut for PossibleWhiteMoves {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.possible_moves
+        &mut self.inner
     }
 }
 
-impl PossibleMoves {
-    fn new() -> Self {
-        Self {
-            possible_moves: Vec::new(),
-        }
-    }
+struct PossibleBlackMoves {
+    inner: Vec<(usize, usize)>,
+}
 
-    fn clear(&mut self) {
-        self.possible_moves.clear();
-    }
+impl Deref for PossibleBlackMoves {
+    type Target = Vec<(usize, usize)>;
 
-    fn add(&mut self, x: usize, y: usize) {
-        self.possible_moves.push((x, y));
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
+}
 
-    fn contains(&self, x: usize, y: usize) -> bool {
-        self.possible_moves.contains(&(x, y))
+impl DerefMut for PossibleBlackMoves {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
 fn main() {
     App::new()
         .insert_resource(State::Start(None))
-        .insert_resource(PossibleMoves::new())
+        .insert_resource(PossibleWhiteMoves { inner: Vec::new() })
+        .insert_resource(PossibleBlackMoves { inner: Vec::new() })
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup_camera)
         .add_startup_system(create_board)
@@ -94,7 +94,8 @@ fn mouse_button_input(
     buttons: Res<Input<MouseButton>>,
     mut whites: Query<&mut Piece, (With<WhitePiece>, Without<BlackPiece>)>,
     mut blacks: Query<&mut Piece, (With<BlackPiece>, Without<WhitePiece>)>,
-    mut possible_moves: ResMut<PossibleMoves>,
+    mut possible_white_moves: ResMut<PossibleWhiteMoves>,
+    mut possible_black_moves: ResMut<PossibleBlackMoves>,
     state: ResMut<State>,
     board: Res<Board>,
 ) {
@@ -103,107 +104,195 @@ fn mouse_button_input(
 
         match state.as_ref() {
             State::Start(_) if y == 0 => {
-                possible_moves.clear();
+                possible_white_moves.clear();
 
                 for i in 1..7 {
-                    possible_moves.add(x, i);
+                    possible_white_moves.push((x, i));
                 }
 
                 for i in 1..=x {
                     if i == 7 {
                         break;
                     }
-                    possible_moves.add(x - i, i);
+                    possible_white_moves.push((x - i, i));
                 }
 
                 for i in (x + 1)..8 {
                     if i - x == 7 {
                         break;
                     }
-                    possible_moves.add(i, i - x);
+                    possible_white_moves.push((i, i - x));
                 }
 
                 *state.into_inner() = State::Start(Some(board.tiles()[x][0]));
             }
             State::Start(None) => {}
             State::Start(Some(color)) => {
-                if possible_moves.contains(x, y) {
+                if possible_white_moves.contains(&(x, y)) {
                     let mut piece = whites
                         .iter_mut()
                         .find(|piece| piece.color() == *color)
                         .unwrap();
 
                     piece.move_piece(x, y);
-                    possible_moves.clear();
+                    possible_white_moves.clear();
 
-                    *state.into_inner() = State::Black(board.tiles()[x][y]);
-                }
-            }
-            State::White(color) => {
-                if possible_moves.contains(x, y) {
-                    let mut piece = whites
-                        .iter_mut()
-                        .find(|piece| piece.color() == *color)
-                        .unwrap();
-
-                    piece.move_piece(x, y);
-                    possible_moves.clear();
+                    let mut occupied = [[false; 8]; 8];
+                    for white in whites.iter() {
+                        occupied[white.x()][white.y()] = true;
+                    }
+                    for black in blacks.iter() {
+                        occupied[black.x()][black.y()] = true;
+                    }
 
                     let black = blacks
                         .iter()
                         .find(|p| p.color() == board.tiles()[x][y])
                         .unwrap();
 
-                    *state.into_inner() = State::Black(black.color());
+                    for i in (0..black.y()).rev() {
+                        if occupied[black.x()][i] {
+                            break;
+                        }
+                        possible_black_moves.push((black.x(), i))
+                    }
+
+                    for i in (0..black.x()).rev() {
+                        let y = black.y() - (black.x() - i);
+                        if occupied[i][y] {
+                            break;
+                        }
+                        possible_black_moves.push((i, y));
+                        if y == 0 {
+                            break;
+                        }
+                    }
+
+                    for i in (black.x() + 1)..8 {
+                        let y = black.y() - (i - black.x());
+                        if occupied[i][y] {
+                            break;
+                        }
+                        possible_black_moves.push((i, y));
+                        if y == 0 {
+                            break;
+                        }
+                    }
+
+                    if !possible_black_moves.is_empty() {
+                        *state.into_inner() = State::Black(black.color());
+                    }
+                }
+            }
+            State::White(color) => {
+                if possible_white_moves.contains(&(x, y)) {
+                    let mut piece = whites
+                        .iter_mut()
+                        .find(|piece| piece.color() == *color)
+                        .unwrap();
+
+                    piece.move_piece(x, y);
+                    possible_white_moves.clear();
+
+                    let mut occupied = [[false; 8]; 8];
+                    for white in whites.iter() {
+                        occupied[white.x()][white.y()] = true;
+                    }
+                    for black in blacks.iter() {
+                        occupied[black.x()][black.y()] = true;
+                    }
+
+                    let black = blacks
+                        .iter()
+                        .find(|p| p.color() == board.tiles()[x][y])
+                        .unwrap();
+
+                    for i in (0..black.y()).rev() {
+                        if occupied[black.x()][i] {
+                            break;
+                        }
+                        possible_black_moves.push((black.x(), i))
+                    }
+
+                    for i in (0..black.x()).rev() {
+                        let y = black.y() - (black.x() - i);
+                        if occupied[i][y] {
+                            break;
+                        }
+                        possible_black_moves.push((i, y));
+                        if y == 0 {
+                            break;
+                        }
+                    }
+
+                    for i in (black.x() + 1)..8 {
+                        let y = black.y() - (i - black.x());
+                        if occupied[i][y] {
+                            break;
+                        }
+                        possible_black_moves.push((i, y));
+                        if y == 0 {
+                            break;
+                        }
+                    }
+
+                    if !possible_black_moves.is_empty() {
+                        *state.into_inner() = State::Black(black.color());
+                    }
                 }
             }
             State::Black(color) => {
-                let mut piece = blacks.iter_mut().find(|p| p.color() == *color).unwrap();
+                if possible_black_moves.contains(&(x, y)) {
+                    let mut piece = blacks.iter_mut().find(|p| p.color() == *color).unwrap();
 
-                let x = piece.x();
-                let y = piece.y() - 1;
-                piece.move_piece(x, y);
-                possible_moves.clear();
+                    piece.move_piece(x, y);
+                    possible_black_moves.clear();
 
-                let mut occupied = [[false; 8]; 8];
-
-                for white in whites.iter() {
-                    occupied[white.x()][white.y()] = true;
-                }
-
-                for black in blacks.iter() {
-                    occupied[black.x()][black.y()] = true;
-                }
-
-                let white = whites
-                    .iter()
-                    .find(|p| p.color() == board.tiles()[x][y])
-                    .unwrap();
-
-                for i in (white.y() + 1)..8 {
-                    if occupied[white.x()][i] {
-                        break;
+                    let mut occupied = [[false; 8]; 8];
+                    for white in whites.iter() {
+                        occupied[white.x()][white.y()] = true;
                     }
-                    possible_moves.add(white.x(), i);
-                }
-
-                for i in 1..=white.x() {
-                    if white.y() + i == 8 || occupied[white.x() - i][white.y() + i] {
-                        break;
+                    for black in blacks.iter() {
+                        occupied[black.x()][black.y()] = true;
                     }
-                    possible_moves.add(white.x() - i, white.y() + i);
-                }
 
-                #[allow(clippy::needless_range_loop)]
-                for i in (white.x() + 1)..8 {
-                    if white.y() + i - white.x() == 8 || occupied[i][white.y() + i - white.x()] {
-                        break;
+                    let white = whites
+                        .iter()
+                        .find(|p| p.color() == board.tiles()[x][y])
+                        .unwrap();
+
+                    for i in (white.y() + 1)..8 {
+                        if occupied[white.x()][i] {
+                            break;
+                        }
+                        possible_white_moves.push((white.x(), i));
                     }
-                    possible_moves.add(i, i - white.x());
-                }
 
-                if !possible_moves.is_empty() {
-                    *state.into_inner() = State::White(white.color());
+                    for i in (0..white.x()).rev() {
+                        let y = white.y() + white.x() - i;
+                        if occupied[i][y] {
+                            break;
+                        }
+                        possible_white_moves.push((i, y));
+                        if y == 7 {
+                            break;
+                        }
+                    }
+
+                    for i in (white.x() + 1)..8 {
+                        let y = white.y() + i - white.x();
+                        if occupied[i][y] {
+                            break;
+                        }
+                        possible_white_moves.push((i, y));
+                        if y == 7 {
+                            break;
+                        }
+                    }
+
+                    if !possible_white_moves.is_empty() {
+                        *state.into_inner() = State::White(white.color());
+                    }
                 }
             }
         }
@@ -215,20 +304,42 @@ struct PossibleMove;
 
 fn spawn_moves(
     mut commands: Commands,
-    possible_moves: Res<PossibleMoves>,
+    possible_white_moves: Res<PossibleWhiteMoves>,
+    possible_black_moves: Res<PossibleBlackMoves>,
     entities: Query<Entity, With<PossibleMove>>,
 ) {
-    if possible_moves.is_changed() {
+    if possible_white_moves.is_changed() || possible_black_moves.is_changed() {
         entities.for_each(|entity| commands.entity(entity).despawn());
 
         let start = -config::BOARD_SIZE / 2.0 + config::TILE_SIZE / 2.0;
         let size = config::TILE_SIZE / 1.5;
 
-        for &(x, y) in possible_moves.iter() {
+        for &(x, y) in possible_white_moves.iter() {
             commands
                 .spawn_bundle(SpriteBundle {
                     sprite: Sprite {
                         color: Color::rgba(1.0, 1.0, 1.0, 0.5),
+                        ..Default::default()
+                    },
+                    transform: Transform {
+                        translation: Vec3::new(
+                            start + config::TILE_SIZE * x as f32,
+                            start + config::TILE_SIZE * y as f32,
+                            0.0,
+                        ),
+                        scale: Vec3::new(size, size, 0.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .insert(PossibleMove);
+        }
+
+        for &(x, y) in possible_black_moves.iter() {
+            commands
+                .spawn_bundle(SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::rgba(0.0, 0.0, 0.0, 0.8),
                         ..Default::default()
                     },
                     transform: Transform {
